@@ -4,13 +4,14 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-  "start": "node server.js"
-},
+    "start": "node server.js"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "aws-iot-device-sdk": "^2.2.16",
     "mqtt": "^5.15.0",
     "ws": "^8.19.0"
   }
