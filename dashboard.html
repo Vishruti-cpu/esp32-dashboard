@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ESP32 Live Sine Wave</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+
+<h2>ESP32 Real-Time Sine Wave</h2>
+<canvas id="chart" width="800" height="400"></canvas>
+
+<script>
+const ctx = document.getElementById('chart').getContext('2d');
+
+// 🔥 BUFFER (stores incoming data)
+let buffer = [];
+
+// Chart Data
+const data = {
+    labels: [],
+    datasets: [{
+        label: 'Sine Wave',
+        data: [],
+        borderWidth: 2,
+        fill: false,
+        tension: 0.3
+    }]
+};
+
+// Chart Config
+const chart = new Chart(ctx, {
+    type: 'line',
+    data: data,
+    options: {
+        animation: false,
+        responsive: true,
+        scales: {
+            x: {
+                title: { display: true, text: 'Samples' }
+            },
+            y: {
+                min: -100,
+                max: 100
+            }
+        }
+    }
+});
+
+// WebSocket
+const socket = new WebSocket("ws://localhost:8080");
+
+// 🔥 ONLY store data (do NOT plot here)
+socket.onmessage = function(event) {
+    try {
+        let obj = JSON.parse(event.data);
+        buffer.push(obj.sine);
+    } catch (e) {
+        console.log("Invalid data:", event.data);
+    }
+};
+
+// 🔥 FIXED-RATE PLOTTING (KEY PART)
+setInterval(() => {
+
+    if (buffer.length > 0) {
+
+        let value = buffer.shift();
+
+        // keep fixed window size
+        if (data.datasets[0].data.length > 2000) {
+            data.datasets[0].data.shift();
+        }
+
+        data.datasets[0].data.push(value);
+
+        // fixed x-axis
+        data.labels = Array.from(
+            { length: data.datasets[0].data.length },
+            (_, i) => i
+        );
+
+        chart.update();
+    }
+
+}, 50);   // 🔥 adjust: 20 = faster, 50 = smooth, 100 = slower
+
+</script>
+
+</body>
+</html>

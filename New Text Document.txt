@@ -1,0 +1,33 @@
+const mqtt = require('mqtt');
+const fs = require('fs');
+const WebSocket = require('ws');
+
+
+const endpoint = "a354rwysx8bbzj-ats.iot.us-east-1.amazonaws.com";
+
+const client = mqtt.connect(`mqtts://${endpoint}`, {
+    clientId: 'node_client_' + Math.random(),
+    key: fs.readFileSync('private.key'),
+    cert: fs.readFileSync('certificate.crt'),
+    ca: fs.readFileSync('AmazonRootCA1.pem')
+});
+
+const wss = new WebSocket.Server({ port: 8080 });
+
+client.on('connect', () => {
+    console.log("✅ Connected to AWS IoT");
+    client.subscribe('esp32/sinewave');
+});
+
+client.on('message', (topic, message) => {
+    const data = message.toString();
+    console.log("Received:", data);
+
+    wss.clients.forEach(ws => {
+        if (ws.readyState === WebSocket.OPEN) {
+            ws.send(data);
+        }
+    });
+});
+
+console.log("🌐 WebSocket running at ws://localhost:8080");
