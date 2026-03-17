@@ -3,10 +3,30 @@ const WebSocket = require('ws');
 const mqtt = require('mqtt');
 
 // 🌐 Create HTTP server (required for Render)
+const fs = require('fs');
+const path = require('path');
+
 const server = http.createServer((req, res) => {
-    res.writeHead(200);
-    res.end("Server is running");
+
+    // Serve HTML file
+    if (req.url === "/") {
+        const filePath = path.join(__dirname, "dashboard.html");
+
+        fs.readFile(filePath, (err, content) => {
+            if (err) {
+                res.writeHead(500);
+                res.end("Error loading file");
+            } else {
+                res.writeHead(200, { "Content-Type": "text/html" });
+                res.end(content);
+            }
+        });
+    } else {
+        res.writeHead(404);
+        res.end("Not Found");
+    }
 });
+
 
 // ✅ Use dynamic port (VERY IMPORTANT)
 const PORT = process.env.PORT || 10000;
