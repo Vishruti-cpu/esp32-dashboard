@@ -3,30 +3,7 @@ const WebSocket = require('ws');
 const fs = require('fs');
 const path = require('path');
 
-const { mqtt, iot, auth } = require('aws-iot-device-sdk-v2');
-
-// =====================
-// Environment Variables
-// =====================
-const {
-    AWS_ENDPOINT,
-    AWS_REGION,
-    PORT
-} = process.env;
-
-const SERVER_PORT = PORT || 10000;
-
-// =====================
-// Debug Logs
-// =====================
-console.log("AWS_ENDPOINT:", AWS_ENDPOINT);
-console.log("AWS_REGION:", AWS_REGION);
-
-// Only check required variables
-if (!AWS_ENDPOINT || !AWS_REGION) {
-    console.error("❌ Missing AWS_ENDPOINT or AWS_REGION");
-    process.exit(1);
-}
+const PORT = process.env.PORT || 10000;
 
 // =====================
 // HTTP Server
@@ -55,75 +32,30 @@ const server = http.createServer((req, res) => {
 // =====================
 const wss = new WebSocket.Server({ server });
 
-// =====================
-// AWS Credentials (Simple & Stable)
-// =====================
-const credentialsProvider = auth.AwsCredentialsProvider.newStatic(
-    process.env.AWS_KEY.trim(),
-    process.env.AWS_SECRET.trim(),
-    null
-);
+wss.on("connection", (ws) => {
+    console.log("✅ Client connected");
+});
 
 // =====================
-// AWS IoT Configuration
+// Receive Data from ESP32
 // =====================
-const config = iot.AwsIotMqttConnectionConfigBuilder
-    .new_with_websockets({
-        region: AWS_REGION,
-        credentials_provider: credentialsProvider
-    })
-    .with_clean_session(true)
-    .with_client_id("web-client-" + Date.now())
-    .with_endpoint(AWS_ENDPOINT)
-    .build();
+// ESP32 will send data to this server
+wss.on("connection", (ws) => {
+    ws.on("message", (message) => {
+        console.log("📥 Received:", message.toString());
 
-// =====================
-// MQTT Client
-// =====================
-const client = new mqtt.MqttClient();
-const connection = client.new_connection(config);
-
-// =====================
-// Connect to AWS IoT
-// =====================
-connection.connect()
-    .then(() => {
-        console.log("✅ Connected to AWS IoT");
-
-        return connection.subscribe(
-            "esp32/sine",
-            mqtt.QoS.AtLeastOnce,
-            (topic, payload) => {
-
-                const raw = payload.toString();
-                console.log("📥 RAW:", raw);
-
-                const value = parseFloat(raw);
-
-                if (isNaN(value)) {
-                    console.log("⚠️ Invalid data skipped");
-                    return;
-                }
-
-                const data = JSON.stringify({ sine: value });
-
-                wss.clients.forEach(ws => {
-                    if (ws.readyState === WebSocket.OPEN) {
-                        ws.send(data);
-                    }
-                });
-
-                console.log("📡 Sent to clients:", data);
+        // Broadcast to all clients
+        wss.clients.forEach(client => {
+            if (client.readyState === WebSocket.OPEN) {
+                client.send(message.toString());
             }
-        );
-    })
-    .catch(err => {
-        console.error("❌ AWS Connection Error:", err);
+        });
     });
+});
 
 // =====================
 // Start Server
 // =====================
-server.listen(SERVER_PORT, () => {
-    console.log("🚀 Server running on port", SERVER_PORT);
+server.listen(PORT, () => {
+    console.log("🚀 Server running on port", PORT);
 });
