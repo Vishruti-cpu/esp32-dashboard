@@ -3,13 +3,13 @@ const WebSocket = require('ws');
 const fs = require('fs');
 const path = require('path');
 
-// ✅ NEW SDK (replace old one)
+// ✅ AWS SDK v2
 const { mqtt, iot, auth } = require('aws-iot-device-sdk-v2');
 
 // 🌐 Port
 const PORT = process.env.PORT || 10000;
 
-// 🌐 Serve HTML
+// 🌐 HTTP server
 const server = http.createServer((req, res) => {
     if (req.url === "/") {
         const filePath = path.join(__dirname, "dashboard.html");
@@ -29,29 +29,32 @@ const server = http.createServer((req, res) => {
     }
 });
 
-// 🔌 WebSocket server
+// 🔌 WebSocket Server
 const wss = new WebSocket.Server({ server });
 
-// ✅ AWS IoT WebSocket config (FIXED)
+// ✅ AWS Credentials Provider (IMPORTANT FIX)
+const credentialsProvider = auth.AwsCredentialsProvider.newStatic(
+    process.env.AWS_KEY,
+    process.env.AWS_SECRET,
+    null   // ⚠️ DO NOT USE "" (this caused your crash earlier)
+);
+
+// ✅ AWS IoT Config (FINAL FIXED)
 const config = iot.AwsIotMqttConnectionConfigBuilder
     .new_with_websockets({
         region: "us-east-1",
-        credentials_provider: auth.AwsCredentialsProvider.newStatic(
-            process.env.AWS_KEY,
-            process.env.AWS_SECRET,
-            ""
-        )
+        credentials_provider: credentialsProvider
     })
     .with_clean_session(true)
     .with_client_id("web-client-" + Date.now())
     .with_endpoint(process.env.AWS_ENDPOINT)
     .build();
 
-// MQTT client
+// MQTT Client
 const client = new mqtt.MqttClient();
 const connection = client.new_connection(config);
 
-// ✅ Connect to AWS
+// ✅ Connect + Subscribe
 connection.connect()
     .then(() => {
         console.log("✅ Connected to AWS IoT");
@@ -60,10 +63,18 @@ connection.connect()
             "esp32/sine",
             mqtt.QoS.AtLeastOnce,
             (topic, payload) => {
-               let data = payload.toString();
-	console.log("DATA FROM AWS:", data);
 
-                // send to browser
+                // 🔥 Convert incoming data
+                let value = parseFloat(payload.toString());
+
+                // 🔥 Always send JSON to browser
+                let data = JSON.stringify({
+                    sine: value
+                });
+
+                console.log("📡 Sending to browser:", data);
+
+                // 🔥 Broadcast to all clients
                 wss.clients.forEach(ws => {
                     if (ws.readyState === WebSocket.OPEN) {
                         ws.send(data);
