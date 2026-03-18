@@ -9,18 +9,18 @@ const { mqtt, iot, auth } = require('aws-iot-device-sdk-v2');
 // Port
 const PORT = process.env.PORT || 10000;
 
-// ✅ DEBUG ENV VARIABLES (VERY IMPORTANT)
+// 🔍 Debug ENV
 console.log("AWS_ENDPOINT:", process.env.AWS_ENDPOINT);
-console.log("AWS_KEY:", process.env.AWS_KEY ? "✅ Present" : "❌ Missing");
-console.log("AWS_SECRET:", process.env.AWS_SECRET ? "✅ Present" : "❌ Missing");
+console.log("AWS_ACCESS_KEY_ID:", process.env.AWS_ACCESS_KEY_ID ? "✅ Present" : "❌ Missing");
+console.log("AWS_SECRET_ACCESS_KEY:", process.env.AWS_SECRET_ACCESS_KEY ? "✅ Present" : "❌ Missing");
 
-// ❌ STOP if credentials missing (prevents crash)
-if (!process.env.AWS_KEY || !process.env.AWS_SECRET || !process.env.AWS_ENDPOINT) {
-    console.error("❌ Missing AWS environment variables. Check Render settings.");
+// ❌ Stop if missing
+if (!process.env.AWS_ENDPOINT || !process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_SECRET_ACCESS_KEY) {
+    console.error("❌ Missing AWS environment variables");
     process.exit(1);
 }
 
-// HTTP server
+// HTTP Server
 const server = http.createServer((req, res) => {
     if (req.url === "/") {
         const filePath = path.join(__dirname, "dashboard.html");
@@ -28,7 +28,7 @@ const server = http.createServer((req, res) => {
         fs.readFile(filePath, (err, content) => {
             if (err) {
                 res.writeHead(500);
-                res.end("Error loading file");
+                res.end("Error loading HTML");
             } else {
                 res.writeHead(200, { "Content-Type": "text/html" });
                 res.end(content);
@@ -43,12 +43,8 @@ const server = http.createServer((req, res) => {
 // WebSocket Server
 const wss = new WebSocket.Server({ server });
 
-// ✅ SAFE credentials (force string)
-const credentialsProvider = auth.AwsCredentialsProvider.newStatic(
-    String(process.env.AWS_KEY),
-    String(process.env.AWS_SECRET),
-    null
-);
+// ✅ Use DEFAULT credentials provider (NO CRASH)
+const credentialsProvider = auth.AwsCredentialsProvider.newDefault();
 
 // AWS IoT Config
 const config = iot.AwsIotMqttConnectionConfigBuilder
@@ -76,11 +72,10 @@ connection.connect()
             (topic, payload) => {
 
                 let raw = payload.toString();
-                console.log("📥 RAW DATA FROM AWS:", raw);
+                console.log("📥 RAW:", raw);
 
                 let value = parseFloat(raw);
 
-                // ❌ Ignore invalid data
                 if (isNaN(value)) {
                     console.log("⚠️ Invalid data skipped");
                     return;
@@ -88,7 +83,7 @@ connection.connect()
 
                 let data = JSON.stringify({ sine: value });
 
-                console.log("📡 Sending to browser:", data);
+                console.log("📡 Sending:", data);
 
                 wss.clients.forEach(ws => {
                     if (ws.readyState === WebSocket.OPEN) {
