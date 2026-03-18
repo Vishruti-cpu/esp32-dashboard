@@ -2,9 +2,9 @@ const http = require('http');
 const WebSocket = require('ws');
 const fs = require('fs');
 const path = require('path');
-const awsIot = require('aws-iot-device-sdk');
+const { mqtt, iot, auth } = require('aws-iot-device-sdk-v2');
 
-// 🌐 Port (Render uses dynamic port)
+// 🌐 Port
 const PORT = process.env.PORT || 10000;
 
 // 🌐 Serve HTML
@@ -30,32 +30,50 @@ const server = http.createServer((req, res) => {
 // 🔌 WebSocket server
 const wss = new WebSocket.Server({ server });
 
-// ☁️ AWS IoT connection (NO certificates)
-const device = awsIot.device({
-    protocol: 'wss',
-    host: process.env.AWS_ENDPOINT,   // e.g. xxxxx-ats.iot.ap-south-1.amazonaws.com
-    region: 'us-east-1',
-    accessKeyId: process.env.AWS_KEY,
-    secretKey: process.env.AWS_SECRET
-});
+// ✅ Correct credentials provider
+const provider = auth.AwsCredentialsProvider.newStatic(
+    process.env.AWS_KEY,
+    process.env.AWS_SECRET,
+    ""
+);
 
-// ✅ Connected to AWS
-device.on('connect', () => {
-    console.log("✅ Connected to AWS IoT");
-    device.subscribe('esp32/sine');
-});
+// ☁️ AWS IoT config
+const config = iot.AwsIotMqttConnectionConfigBuilder
+    .new_with_websockets()
+    .with_clean_session(true)
+    .with_client_id("web-client-" + Date.now())
+    .with_endpoint(process.env.AWS_ENDPOINT)
+    .with_credentials_provider(provider)
+    .with_region("us-east-1")
+    .build();
 
-// 📡 When data comes from ESP32 via AWS
-device.on('message', (topic, payload) => {
-    let data = payload.toString();
+// MQTT client
+const client = new mqtt.MqttClient();
+const connection = client.new_connection(config);
 
-    // send to browser
-    wss.clients.forEach(ws => {
-        if (ws.readyState === WebSocket.OPEN) {
-            ws.send(data);
-        }
+// 🔥 Connect to AWS
+connection.connect()
+    .then(() => {
+        console.log("✅ Connected to AWS IoT");
+
+        return connection.subscribe(
+            "esp32/sine",
+            mqtt.QoS.AtLeastOnce,
+            (topic, payload) => {
+                let data = payload.toString();
+
+                // send to browser
+                wss.clients.forEach(ws => {
+                    if (ws.readyState === WebSocket.OPEN) {
+                        ws.send(data);
+                    }
+                });
+            }
+        );
+    })
+    .catch(err => {
+        console.log("❌ AWS Error:", err);
     });
-});
 
 // 🚀 Start server
 server.listen(PORT, () => {
