@@ -10,8 +10,6 @@ const { mqtt, iot, auth } = require('aws-iot-device-sdk-v2');
 // =====================
 const {
     AWS_ENDPOINT,
-    AWS_KEY,
-    AWS_SECRET,
     AWS_REGION,
     PORT
 } = process.env;
@@ -22,15 +20,11 @@ const SERVER_PORT = PORT || 10000;
 // Debug Logs
 // =====================
 console.log("AWS_ENDPOINT:", AWS_ENDPOINT);
-console.log("AWS_KEY:", AWS_KEY ? "✅ Present" : "❌ Missing");
-console.log("AWS_SECRET:", AWS_SECRET ? "✅ Present" : "❌ Missing");
 console.log("AWS_REGION:", AWS_REGION);
 
-// =====================
-// Stop if Missing Variables
-// =====================
-if (!AWS_ENDPOINT || !AWS_KEY || !AWS_SECRET || !AWS_REGION) {
-    console.error("❌ Missing AWS environment variables");
+// Only check required variables
+if (!AWS_ENDPOINT || !AWS_REGION) {
+    console.error("❌ Missing AWS_ENDPOINT or AWS_REGION");
     process.exit(1);
 }
 
@@ -62,13 +56,12 @@ const server = http.createServer((req, res) => {
 const wss = new WebSocket.Server({ server });
 
 // =====================
-// AWS Credentials (Using Render Variables)
+// AWS Credentials (Simple & Stable)
 // =====================
 const credentialsProvider = auth.AwsCredentialsProvider.newDefault();
 
-
 // =====================
-// AWS IoT MQTT Configuration
+// AWS IoT Configuration
 // =====================
 const config = iot.AwsIotMqttConnectionConfigBuilder
     .new_with_websockets({
