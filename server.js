@@ -60,7 +60,8 @@ connection.connect()
             "esp32/sine",
             mqtt.QoS.AtLeastOnce,
             (topic, payload) => {
-                let data = payload.toString();
+               let data = payload.toString();
+	console.log("DATA FROM AWS:", data);
 
                 // send to browser
                 wss.clients.forEach(ws => {
