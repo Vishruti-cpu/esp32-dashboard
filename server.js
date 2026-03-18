@@ -11,8 +11,8 @@ const PORT = process.env.PORT || 10000;
 
 // 🔍 Debug ENV
 console.log("AWS_ENDPOINT:", process.env.AWS_ENDPOINT);
-console.log("AWS_ACCESS_KEY_ID:", process.env.AWS_ACCESS_KEY_ID ? "✅ Present" : "❌ Missing");
-console.log("AWS_SECRET_ACCESS_KEY:", process.env.AWS_SECRET_ACCESS_KEY ? "✅ Present" : "❌ Missing");
+console.log("AWS_KEY:", process.env.AWS_ACCESS_KEY_ID ? "✅ Present" : "❌ Missing");
+console.log("AWS_SECRET:", process.env.AWS_SECRET_ACCESS_KEY ? "✅ Present" : "❌ Missing");
 
 // ❌ Stop if missing
 if (!process.env.AWS_ENDPOINT || !process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_SECRET_ACCESS_KEY) {
