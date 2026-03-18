@@ -58,7 +58,11 @@ const wss = new WebSocket.Server({ server });
 // =====================
 // AWS Credentials (Simple & Stable)
 // =====================
-const credentialsProvider = auth.AwsCredentialsProvider.newDefault();
+const credentialsProvider = auth.AwsCredentialsProvider.newStatic(
+    process.env.AWS_KEY.trim(),
+    process.env.AWS_SECRET.trim(),
+    null
+);
 
 // =====================
 // AWS IoT Configuration
