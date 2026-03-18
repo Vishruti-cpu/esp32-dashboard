@@ -64,11 +64,8 @@ const wss = new WebSocket.Server({ server });
 // =====================
 // AWS Credentials (Using Render Variables)
 // =====================
-const credentialsProvider = auth.AwsCredentialsProvider.newStatic(
-    AWS_KEY,
-    AWS_SECRET,
-    null
-);
+const credentialsProvider = auth.AwsCredentialsProvider.newDefault();
+
 
 // =====================
 // AWS IoT MQTT Configuration
