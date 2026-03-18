@@ -2,6 +2,8 @@ const http = require('http');
 const WebSocket = require('ws');
 const fs = require('fs');
 const path = require('path');
+
+// ✅ NEW SDK (replace old one)
 const { mqtt, iot, auth } = require('aws-iot-device-sdk-v2');
 
 // 🌐 Port
@@ -30,28 +32,26 @@ const server = http.createServer((req, res) => {
 // 🔌 WebSocket server
 const wss = new WebSocket.Server({ server });
 
-// ✅ Correct credentials provider
-const provider = auth.AwsCredentialsProvider.newStatic(
-    process.env.AWS_KEY,
-    process.env.AWS_SECRET,
-    ""
-);
-
-// ☁️ AWS IoT config
+// ✅ AWS IoT WebSocket config (FIXED)
 const config = iot.AwsIotMqttConnectionConfigBuilder
-    .new_with_websockets()
+    .new_with_websockets({
+        region: "us-east-1",
+        credentials_provider: auth.AwsCredentialsProvider.newStatic(
+            process.env.AWS_KEY,
+            process.env.AWS_SECRET,
+            ""
+        )
+    })
     .with_clean_session(true)
     .with_client_id("web-client-" + Date.now())
     .with_endpoint(process.env.AWS_ENDPOINT)
-    .with_credentials_provider(provider)
-    .with_region("us-east-1")
     .build();
 
 // MQTT client
 const client = new mqtt.MqttClient();
 const connection = client.new_connection(config);
 
-// 🔥 Connect to AWS
+// ✅ Connect to AWS
 connection.connect()
     .then(() => {
         console.log("✅ Connected to AWS IoT");
